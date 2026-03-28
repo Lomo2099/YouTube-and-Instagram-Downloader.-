@@ -22,3 +22,7 @@ Before running the app, ensure you have the following installed:
    ```bash
    git clone [https://github.com/YourUsername/YouTube-and-Instagram-Downloader.git](https://github.com/YourUsername/YouTube-and-Instagram-Downloader.git)
    cd YouTube-and-Instagram-Downloader
+
+
+
+<img width="600" height="423" alt="image" src="https://github.com/user-attachments/assets/5b620873-3ab3-4478-9eb2-ff65999d6aee" />
