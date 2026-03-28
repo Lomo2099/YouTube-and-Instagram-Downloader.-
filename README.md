@@ -26,3 +26,7 @@ Before running the app, ensure you have the following installed:
 
 
 <img width="600" height="423" alt="image" src="https://github.com/user-attachments/assets/5b620873-3ab3-4478-9eb2-ff65999d6aee" />
+
+
+📜 License
+This project is for educational purposes. Please respect the terms of service of the platforms you download from.
