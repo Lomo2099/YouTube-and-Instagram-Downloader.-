@@ -1,0 +1,2 @@
+Python modules: customtkinter and yt-dlp
+Apps: FFMPEG
