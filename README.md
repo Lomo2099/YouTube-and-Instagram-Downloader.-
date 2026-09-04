@@ -20,7 +20,7 @@ Before running the app, ensure you have the following installed:
 
 1. *Clone the repository:*
    ```bash
-   git clone [https://github.com/YourUsername/YouTube-and-Instagram-Downloader.git](https://github.com/YourUsername/YouTube-and-Instagram-Downloader.git)
+   git clone https://github.com/Lomo2099/YouTube-and-Instagram-Downloader.git
    cd YouTube-and-Instagram-Downloader
 
 
