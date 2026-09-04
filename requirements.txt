@@ -1,2 +1,5 @@
 Python modules: customtkinter and yt-dlp
+1. pip install customtkinter
+2. pip install yt-dlp
+
 Apps: FFMPEG
