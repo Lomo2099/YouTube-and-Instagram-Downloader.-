@@ -1,99 +1,150 @@
-import customtkinter as ctk
-import yt_dlp
-import threading
 import os
-from tkinter import messagebox
+import shutil
+import tempfile
+import threading
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import yt_dlp
 
-# Set the appearance of the app
-ctk.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
-ctk.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
+class YTDownloaderApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Universal Video Downloader")
+        self.root.geometry("620x460")
+        self.root.resizable(False, False)
 
-class App(ctk.CTk):
-    def __init__(self):
-        super().__init__()
+        self.style = ttk.Style()
+        self.style.theme_use('clam')
 
-        self.title("Media Downloader Pro")
-        self.geometry("600x400")
+        self.url_var = tk.StringVar()
+        self.output_dir_var = tk.StringVar(value=os.path.abspath("downloads"))
+        self.format_var = tk.StringVar(value="video")
+        self.use_chrome_cookies_var = tk.BooleanVar(value=True)
 
-        # --- UI Elements ---
-        self.label = ctk.CTkLabel(self, text="YouTube & Instagram Downloader", font=ctk.CTkFont(size=20, weight="bold"))
-        self.label.pack(pady=20)
+        self._build_ui()
 
-        # URL Entry
-        self.url_entry = ctk.CTkEntry(self, placeholder_text="Paste your link here...", width=450)
-        self.url_entry.pack(pady=10)
+    def _build_ui(self):
+        header_frame = ttk.Frame(self.root, padding=15)
+        header_frame.pack(fill=tk.X)
+        ttk.Label(
+            header_frame, 
+            text="YouTube & Instagram Downloader", 
+            font=("Helvetica", 16, "bold")
+        ).pack(anchor=tk.W)
 
-        # Radio buttons for Format Selection
-        self.format_var = ctk.StringVar(value="mp4")
-        self.radio_frame = ctk.CTkFrame(self)
-        self.radio_frame.pack(pady=10)
+        form_frame = ttk.Frame(self.root, padding=15)
+        form_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.mp4_radio = ctk.CTkRadioButton(self.radio_frame, text="Video (MP4)", variable=self.format_var, value="mp4")
-        self.mp4_radio.grid(row=0, column=0, padx=20, pady=10)
+        ttk.Label(form_frame, text="Video / Reel URL:", font=("Helvetica", 10, "bold")).pack(anchor=tk.W, pady=(0, 2))
+        url_entry = ttk.Entry(form_frame, textvariable=self.url_var, width=70)
+        url_entry.pack(fill=tk.X, pady=(0, 15))
+        url_entry.focus()
 
-        self.mp3_radio = ctk.CTkRadioButton(self.radio_frame, text="Audio (MP3)", variable=self.format_var, value="mp3")
-        self.mp3_radio.grid(row=0, column=1, padx=20, pady=10)
+        ttk.Label(form_frame, text="Save Folder:", font=("Helvetica", 10, "bold")).pack(anchor=tk.W, pady=(0, 2))
+        path_frame = ttk.Frame(form_frame)
+        path_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Entry(path_frame, textvariable=self.output_dir_var, width=50).pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        ttk.Button(path_frame, text="Browse...", command=self._browse_folder).pack(side=tk.RIGHT)
 
-        # Download Button
-        self.download_btn = ctk.CTkButton(self, text="Download Now", command=self.start_download_thread)
-        self.download_btn.pack(pady=20)
+        ttk.Label(form_frame, text="Download Format:", font=("Helvetica", 10, "bold")).pack(anchor=tk.W, pady=(0, 5))
+        opts_frame = ttk.Frame(form_frame)
+        opts_frame.pack(fill=tk.X, pady=(0, 15))
 
-        # Status Label
-        self.status_label = ctk.CTkLabel(self, text="Status: Ready", text_color="gray")
-        self.status_label.pack(pady=10)
+        ttk.Radiobutton(opts_frame, text="Video (MP4)", variable=self.format_var, value="video").pack(side=tk.LEFT, padx=(0, 20))
+        ttk.Radiobutton(opts_frame, text="Audio Only (MP3)", variable=self.format_var, value="audio").pack(side=tk.LEFT)
 
-    def update_status(self, text, color="white"):
-        self.status_label.configure(text=f"Status: {text}", text_color=color)
+        auth_frame = ttk.LabelFrame(form_frame, text=" Authentication ", padding=10)
+        auth_frame.pack(fill=tk.X, pady=(0, 15))
 
-    def start_download_thread(self):
-        # We use threading so the GUI stays responsive during the download
-        link = self.url_entry.get().strip()
-        if not link:
-            messagebox.showwarning("Empty URL", "Please paste a link first!")
+        ttk.Checkbutton(
+            auth_frame, 
+            text="Use Chrome Cookies (Required for Instagram / Works while Chrome is open)", 
+            variable=self.use_chrome_cookies_var
+        ).pack(anchor=tk.W)
+
+        self.download_btn = ttk.Button(form_frame, text="Download Media", command=self._start_download_thread)
+        self.download_btn.pack(fill=tk.X, ipady=5)
+
+        self.status_label = ttk.Label(self.root, text="Ready", font=("Helvetica", 9, "italic"), padding=10)
+        self.status_label.pack(anchor=tk.W)
+
+    def _browse_folder(self):
+        folder = filedialog.askdirectory(initialdir=self.output_dir_var.get())
+        if folder:
+            self.output_dir_var.set(folder)
+
+    def _update_status(self, text):
+        self.status_label.config(text=text)
+
+    def _start_download_thread(self):
+        url = self.url_var.get().strip()
+        if not url:
+            messagebox.showwarning("Input Error", "Please enter a valid URL.")
             return
 
-        self.download_btn.configure(state="disabled")
-        self.update_status("Initializing...", "yellow")
+        self.download_btn.config(state=tk.DISABLED)
+        self._update_status("Starting download... Please wait.")
 
-        thread = threading.Thread(target=self.download_media, args=(link, self.format_var.get()))
-        thread.start()
+        threading.Thread(target=self._run_download, args=(url,), daemon=True).start()
 
-    def download_media(self, link, choice):
+    def _run_download(self, url):
+        output_path = self.output_dir_var.get()
+        is_audio = self.format_var.get() == "audio"
+        use_cookies = self.use_chrome_cookies_var.get()
+
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+
         ydl_opts = {
-            'outtmpl': '%(title)s.%(ext)s',
-            # Add a progress hook to update the status label
-            'progress_hooks': [self.progress_hook],
+            'outtmpl': os.path.join(output_path, '%(title)s.%(ext)s'),
+            'quiet': True,
+            'no_warnings': True,
         }
 
-        if choice == 'mp4':
-            ydl_opts['format'] = 'bestvideo+bestaudio/best'
-            ydl_opts['merge_output_format'] = 'mp4'
-        else:
+        if is_audio:
             ydl_opts['format'] = 'bestaudio/best'
             ydl_opts['postprocessors'] = [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             }]
+        else:
+            ydl_opts['format'] = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+            ydl_opts['merge_output_format'] = 'mp4'
+
+        temp_dir = None
+
+        if use_cookies:
+            flatpak_chrome = os.path.expanduser('~/.var/app/com.google.Chrome')
+            if os.path.exists(flatpak_chrome):
+                temp_dir = tempfile.mkdtemp()
+                copied_chrome_path = os.path.join(temp_dir, 'com.google.Chrome')
+                shutil.copytree(flatpak_chrome, copied_chrome_path, dirs_exist_ok=True)
+                ydl_opts['cookiesfrombrowser'] = (f'chrome:{copied_chrome_path}/',)
+            else:
+                ydl_opts['cookiesfrombrowser'] = ('chrome',)
 
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([link])
-            self.update_status("Download Complete!", "green")
-            messagebox.showinfo("Success", "Media downloaded successfully!")
-        except Exception as e:
-            self.update_status("Error Occurred", "red")
-            messagebox.showerror("Error", str(e))
-        finally:
-            self.download_btn.configure(state="normal")
+                ydl.download([url])
+            
+            self.root.after(0, lambda: messagebox.showinfo("Success", f"Download Complete!\nSaved to: {output_path}"))
+            self.root.after(0, lambda: self._update_status("Download finished successfully."))
+            self.root.after(0, lambda: self.url_var.set(""))
 
-    def progress_hook(self, d):
-        if d['status'] == 'downloading':
-            p = d.get('_percent_str', '0%')
-            self.update_status(f"Downloading... {p}", "cyan")
-        elif d['status'] == 'finished':
-            self.update_status("Processing file...", "orange")
+        except Exception as e:
+            err_msg = str(e)
+            self.root.after(0, lambda: messagebox.showerror("Download Error", f"Failed to download:\n{err_msg}"))
+            self.root.after(0, lambda: self._update_status("Download failed."))
+
+        finally:
+            if temp_dir and os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir, ignore_errors=True)
+            self.root.after(0, lambda: self.download_btn.config(state=tk.NORMAL))
+
 
 if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+    root = tk.Tk()
+    app = YTDownloaderApp(root)
+    root.mainloop()
