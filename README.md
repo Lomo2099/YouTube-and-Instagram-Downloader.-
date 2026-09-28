@@ -14,6 +14,8 @@ Before running the app, ensure you have the following installed:
 1. *Python 3.12+**
 2. *FFmpeg:* Required for merging video/audio and converting to MP3.
    - *Windows:* [Download via Gyan.dev](https://www.gyan.dev/ffmpeg/builds/)
+   - *Linux:* [Download via Gyan.dev](https://www.gyan.dev/ffmpeg/builds/)
+   - *MacOS:* ```brew install ffmpeg ```
   
 
 ## 🚀 Installation & Usage
